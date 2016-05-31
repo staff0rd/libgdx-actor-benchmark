@@ -108,18 +108,6 @@ class Level extends Group {
 		path = new Group();
 		addActor(path);
 		generateRandomLevel();
-		//rotate();
-	}
-
-	void rotate() {
-		float rotation = getRotation();
-		float rotateTo = MathUtils.random(rotation-90, rotation+90);
-		addAction(sequence(rotateTo(rotateTo, 2), run(new Runnable() {
-			@Override
-			public void run() {
-				rotate();
-			}
-		})));
 	}
 
 	@Override
