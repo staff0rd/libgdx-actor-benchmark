@@ -8,8 +8,11 @@ import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.PixmapPacker;
 import com.badlogic.gdx.graphics.g2d.Sprite;
+import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.scenes.scene2d.*;
 import com.badlogic.gdx.scenes.scene2d.ui.Image;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
@@ -34,7 +37,7 @@ public class ActorBenchmark extends ApplicationAdapter {
 		stage.addListener(new InputListener() {
 			@Override
 			public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
-				Level.LENGTH += 5;
+				Level.LENGTH += 1000;
 				newGame();
 				return true;
 			}
@@ -75,23 +78,34 @@ public class ActorBenchmark extends ApplicationAdapter {
 }
 
 class Block extends Image {
+	static PixmapPacker packer;
+	static TextureAtlas atlas;
 	protected Color color;
+    public String name;
 
-	public Block(Color color, float width, float height) {
+	static {
+		packer = new PixmapPacker(512, 512, Pixmap.Format.RGBA8888, 1, false);
+		atlas = new TextureAtlas();
+	}
+
+	public Block(Color color, int width, int height) {
+	    name = color.toString();
 		setSize(width, height);
-		this.color = color;
-		Sprite sprite = new Sprite(getImage(color));
+		TextureAtlas.AtlasRegion region = atlas.findRegion(name);
+		if (region == null) {
+			packer.pack(name, getImage(color));
+			packer.updateTextureAtlas(atlas, Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest, false);
+		}
+		Sprite sprite = new Sprite(atlas.findRegion(name));
 		sprite.setSize(getWidth(), getHeight());
 		setDrawable(new SpriteDrawable(sprite));
 	}
 
-	Texture getImage(Color color) {
-		Pixmap pixmap = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
+	Pixmap getImage(Color color) {
+		Pixmap pixmap = new Pixmap(10, 10, Pixmap.Format.RGBA8888);
 		pixmap.setColor(color);
 		pixmap.fill();
-		Texture texture = new Texture(pixmap);
-		pixmap.dispose();
-		return texture;
+		return pixmap;
 	}
 }
 
@@ -108,13 +122,25 @@ class Level extends Group {
 		path = new Group();
 		addActor(path);
 		generateRandomLevel();
+		rotate();
+	}
+
+	void rotate() {
+		float rotation = getRotation();
+		float rotateTo = MathUtils.random(rotation-90, rotation+90);
+		addAction(sequence(rotateTo(rotateTo, 2), run(new Runnable() {
+			@Override
+			public void run() {
+				rotate();
+			}
+		})));
 	}
 
 	@Override
 	public void act(float delta) {
 		if (this.speed > 0) {
 			this.path.setX(path.getX() - speed / delta);
-
+			//this.setCullingArea(new Rectangle(-Gdx.graphics.getWidth() + this.path.getX(), 0, Gdx.graphics.getWidth()*2, Gdx.graphics.getHeight()));
 			if (-this.path.getX() >= getWidth())
 				gameOver();
 		}
@@ -140,9 +166,10 @@ class Level extends Group {
 			actorCount ++;
 			setWidth(getWidth() + block.getWidth());
 		}
+		Gdx.app.log("Regions", "" + Block.atlas.getRegions().size);
 	}
 
 	Block randomBlock(int width) {
-		return new Block(new Color(MathUtils.random(), MathUtils.random(), MathUtils.random(), 1), width, MathUtils.random(30f, 150f));
+		return new Block(new Color(1f/MathUtils.random(1,6), 1f/MathUtils.random(1,6), 1f/MathUtils.random(1,6), 1), width, MathUtils.random(30, 150));
 	}
 }
